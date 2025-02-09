@@ -1,11 +1,10 @@
-# Developer: Gagan
+# frontend.py
 
 import time, os
 import logging
 import json
 from .. import bot as gagan
 from .. import userbot, Bot
-from .. import FORCESUB as fs
 from main.plugins.pyroplug import get_msg
 from main.plugins.helpers import get_link, join, screenshot
 

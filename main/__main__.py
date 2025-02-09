@@ -1,5 +1,3 @@
-# Join me @dev_gagan
-
 import logging
 import time
 
@@ -15,11 +13,11 @@ print("Successfully deployed!")
 print("Bot Deployed : Shaurya Soni")
 
 if __name__ == "__main__":
-    from . import bot  # Ensure bot is correctly imported from the `__init__.py`
+    from . import bot
     import glob
     from pathlib import Path
     from main.utils import load_plugins
-
+    
     path = "main/plugins/*.py"
     files = glob.glob(path)
     for name in files:
@@ -27,5 +25,5 @@ if __name__ == "__main__":
             patt = Path(a.name)
             plugin_name = patt.stem
             load_plugins(plugin_name.replace(".py", ""))
-    logger.info("Bot Started :)")
+    logger.info("Bot Started Successfully!")
     bot.run_until_disconnected()

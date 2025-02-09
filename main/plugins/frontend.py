@@ -9,7 +9,7 @@ from main.plugins.pyroplug import get_msg
 from main.plugins.helpers import get_link, join, screenshot
 
 from telethon import events
-from pyrogram.errors import FloodWait
+from pyrogram.errors import FloodWait, PeerIdInvalid
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -23,6 +23,16 @@ process = []
 timer = []
 user = []
 
+def normalize_chat_id(chat_id):
+    """Normalize channel/chat ID by ensuring proper format"""
+    try:
+        chat_id = str(chat_id).replace("-100", "")
+        if not chat_id.isdigit():
+            raise ValueError("Invalid channel ID")
+        return int('-100' + chat_id)
+    except Exception as e:
+        raise ValueError(f"Invalid channel ID: {str(e)}")
+
 @gagan.on(events.NewMessage(incoming=True, func=lambda e: e.is_private))
 async def clone(event):
     logging.info(event)
@@ -31,6 +41,7 @@ async def clone(event):
         reply = await event.get_reply_message()
         if reply.text == message:
             return
+
     lit = event.text
     li = lit.split("\n")
     if len(li) > 10:
@@ -83,7 +94,20 @@ async def clone(event):
                 continue
                 
             try:
+                if 't.me/c/' in link:
+                    chat_id = link.split("/")[-2]
+                    try:
+                        chat_id = normalize_chat_id(chat_id)
+                        await userbot.get_chat(chat_id)
+                    except ValueError as e:
+                        await edit.edit(str(e))
+                        continue
+                    except PeerIdInvalid:
+                        await edit.edit("Invalid channel/group ID")
+                        continue
+                
                 await get_msg(userbot, Bot, event.sender_id, edit.id, link, msg_id, file_name)
+                
             except ValueError as ve:
                 if "Peer id invalid" in str(ve):
                     await edit.edit("Invalid channel/chat ID. Please check the link.")

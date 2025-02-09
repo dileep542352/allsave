@@ -1,4 +1,4 @@
-# frontend.py
+#Developer : Gagan 
 
 import time, os
 import logging
@@ -18,10 +18,10 @@ logging.getLogger("pyrogram").setLevel(logging.INFO)
 logging.getLogger("telethon").setLevel(logging.INFO)
 
 message = "Send me the message link you want to start saving from, as a reply to this message."
-
-process = []
-timer = []
-user = []
+          
+process=[]
+timer=[]
+user=[]
 
 @gagan.on(events.NewMessage(incoming=True, func=lambda e: e.is_private))
 async def clone(event):
@@ -31,8 +31,8 @@ async def clone(event):
         reply = await event.get_reply_message()
         if reply.text == message:
             return
-    lit = event.text
-    li = lit.split("\n")
+    lit=event.text
+    li=lit.split("\n")
     if len(li) > 10:
         await event.reply("max 10 links per message")
         return
@@ -43,17 +43,19 @@ async def clone(event):
                 return
         except TypeError:
             return
+            
         edit = await event.reply("Processing!")
         if f'{int(event.sender_id)}' in user:
             return await edit.edit("Please don't spam links, wait until ongoing process is done.")
         user.append(f'{int(event.sender_id)}')
+        
         if "|" in li:
             url = li
             url_parts = url.split("|")
             if len(url_parts) == 2:
                 file_name = url_parts[1]
         if file_name is not None:
-            file_name = file_name.strip()
+            file_name = file_name.strip()                
         try:
             if 't.me/' not in link:
                 await edit.edit("invalid link")

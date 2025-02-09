@@ -7,7 +7,7 @@ from .. import userbot, Bot
 from main.plugins.pyroplug import get_bulk_msg
 from main.plugins.helpers import get_link
 from telethon import events, Button
-from pyrogram.errors import FloodWait
+from pyrogram.errors import FloodWait, PeerIdInvalid
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -17,6 +17,32 @@ logging.getLogger("telethon").setLevel(logging.WARNING)
 
 batch = []
 ids = []
+
+def clean_channel_id(channel_id):
+    """Clean and validate channel ID"""
+    try:
+        # Remove -100 prefix if exists
+        if str(channel_id).startswith('-100'):
+            channel_id = str(channel_id)[4:]
+        # Ensure valid integer
+        return int(channel_id)
+    except:
+        return None
+
+async def get_messages_safe(client, chat_id, message_id):
+    """Safely get messages handling peer ID errors"""
+    try:
+        # Try with original ID
+        return await client.get_messages(chat_id, message_ids=message_id)
+    except (PeerIdInvalid, ValueError):
+        try:
+            # Try with cleaned ID
+            cleaned_id = clean_channel_id(chat_id)
+            if cleaned_id:
+                return await client.get_messages(cleaned_id, message_ids=message_id)
+        except:
+            pass
+    return None
 
 @gagan.on(events.NewMessage(incoming=True, pattern='/batch'))
 async def _batch(event):
@@ -74,12 +100,6 @@ async def _batch(event):
             ids.clear()
             batch.clear()
 
-@gagan.on(events.callbackquery.CallbackQuery(data="cancel"))
-async def cancel(event):
-    ids.clear()
-    batch.clear()
-    await event.answer("Batch has been cancelled!", alert=True)
-    
 async def run_batch(userbot, client, sender, countdown, link):
     for i in range(len(ids)):
         timer = 2 if i < 250 else 3 if i < 1000 else 4 if i < 10000 else 5 if i < 50000 else 6
@@ -91,6 +111,14 @@ async def run_batch(userbot, client, sender, countdown, link):
             count_down = f"**Batch process ongoing...**\n\nProcess completed: {i+1}"
             try:
                 msg_id = int(link.split("/")[-1])
+                chat_id = link.split("/")[-2]
+                
+                # Clean channel ID
+                if 't.me/c/' in link:
+                    chat_id = clean_channel_id(chat_id)
+                    if not chat_id:
+                        return await client.send_message(sender, "**Invalid Channel ID!**")
+                
             except ValueError:
                 if '?single' not in link:
                     return await client.send_message(sender, "**Invalid Link!**")
@@ -98,14 +126,23 @@ async def run_batch(userbot, client, sender, countdown, link):
                 msg_id = int(link_.split("/")[-1])
                 
             integer = msg_id + int(ids[i])
-            await get_bulk_msg(userbot, client, sender, link, integer)
             
-            protection = await client.send_message(sender, f"Sleeping for `{timer}` seconds to avoid Floodwaits!")
-            await countdown.edit(count_down, 
-                               buttons=[[Button.url("Join Channel", url="https://t.me/dev_gagan")]])
-            await asyncio.sleep(timer)
-            await protection.delete()
-            
+            try:
+                await get_bulk_msg(userbot, client, sender, link, integer)
+                protection = await client.send_message(sender, f"Sleeping for `{timer}` seconds to avoid Floodwaits!")
+                await countdown.edit(count_down, 
+                                   buttons=[[Button.url("Join Channel", url="https://t.me/dev_gagan")]])
+                await asyncio.sleep(timer)
+                await protection.delete()
+            except PeerIdInvalid:
+                # Try with cleaned channel ID
+                if chat_id:
+                    try:
+                        await get_bulk_msg(userbot, client, sender, f"https://t.me/c/{chat_id}/{integer}", integer)
+                    except:
+                        await client.send_message(sender, "Failed to access channel. Please check the link.")
+                        continue
+                
         except FloodWait as fw:
             if int(fw.value) > 300:
                 await client.send_message(sender, f'You have floodwaits of {fw.value} seconds, cancelling batch')
@@ -133,6 +170,12 @@ async def run_batch(userbot, client, sender, countdown, link):
         if i + 1 == len(ids):
             return -2
 
+@gagan.on(events.callbackquery.CallbackQuery(data="cancel"))
+async def cancel(event):
+    ids.clear()
+    batch.clear()
+    await event.answer("Batch has been cancelled!", alert=True)
+
 START_PIC = "https://telegra.ph/file/1605ca7c742b3f8d2997b.jpg"
 TEXT = "👋 Hi, This is 'Paid Restricted Content Saver' bot.\n\nSend /batch to start saving content."
 
@@ -143,4 +186,4 @@ async def start(event):
         file=START_PIC,
         caption=TEXT,
         buttons=[[Button.url("Join Channel", url="https://t.me/dev_gagan")]]
-      )
+)

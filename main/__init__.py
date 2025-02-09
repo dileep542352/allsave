@@ -26,10 +26,6 @@ else:
 
 bot = TelegramClient('bot', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
 
-# userbot = Client(
-#     session_name=SESSION, 
-#     api_hash=API_HASH, 
-#     api_id=API_ID)
 userbot = Client("myacc", api_id=API_ID, api_hash=API_HASH, session_string=SESSION)
 
 try:
@@ -48,6 +44,6 @@ Bot = Client(
 try:
     Bot.start()
 except Exception as e:
-    # print(e)
+    logger = logging.getLogger(__name__)
     logger.info(e)
     sys.exit(1)

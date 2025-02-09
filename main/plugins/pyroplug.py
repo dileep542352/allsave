@@ -4,10 +4,7 @@ from .. import Bot, bot
 from main.plugins.progress import progress_for_pyrogram
 from main.plugins.helpers import screenshot, video_metadata
 from pyrogram import Client, filters
-from pyrogram.errors import (
-    ChannelBanned, ChannelInvalid, ChannelPrivate, 
-    ChatIdInvalid, ChatInvalid, FloodWait, PeerIdInvalid
-)
+from pyrogram.errors import FloodWait
 from telethon import events
 import logging
 
@@ -17,68 +14,16 @@ logger = logging.getLogger(__name__)
 logging.getLogger("pyrogram").setLevel(logging.INFO)
 logging.getLogger("telethon").setLevel(logging.INFO)
 
-def normalize_chat_id(chat_id):
-    """Normalize channel/chat ID by ensuring proper format"""
-    try:
-        chat_id = str(chat_id).replace("-100", "")
-        if not chat_id.isdigit():
-            raise ValueError("Invalid channel ID")
-        return int('-100' + chat_id)
-    except Exception as e:
-        raise ValueError(f"Invalid channel ID: {str(e)}")
-
-async def check(userbot, client, link):
-    try:
-        msg_id = 0
-        try:
-            msg_id = int(link.split("/")[-1])
-        except ValueError:
-            if '?single' not in link:
-                return False, "**Invalid Link!**"
-            link_ = link.split("?single")[0]
-            msg_id = int(link_.split("/")[-1])
-        
-        if 't.me/c/' in link:
-            try:
-                chat_id = link.split("/")[-2]
-                chat_id = normalize_chat_id(chat_id)
-                await userbot.get_chat(chat_id)
-                await userbot.get_messages(chat_id, msg_id)
-                return True, None
-            except ValueError as e:
-                return False, str(e)
-            except PeerIdInvalid:
-                return False, "Invalid channel/group ID"
-            except Exception as e:
-                return False, f"Error: {str(e)}"
-        else:
-            try:
-                chat = str(link.split("/")[-2])
-                await client.get_messages(chat, msg_id)
-                return True, None
-            except Exception as e:
-                return False, "Invalid link or bot not in channel"
-                
-    except Exception as e:
-        return False, f"Error: {str(e)}"
-
 async def get_msg(userbot, client, sender, edit_id, msg_link, i, file_n):
     try:
-        chat = ""
         msg_id = int(i)
-        
         if msg_id == -1:
             await client.edit_message_text(sender, edit_id, "**Invalid Link!**")
             return None
             
         if 't.me/c/' in msg_link or 't.me/b/' in msg_link:
             try:
-                chat_id = msg_link.split("/")[-2]
-                chat = normalize_chat_id(chat_id) if "t.me/b" not in msg_link else int(chat_id)
-                
-                # Verify chat exists
-                await userbot.get_chat(chat)
-                
+                chat = msg_link.split("/")[-2]
                 msg = await userbot.get_messages(chat_id=chat, message_ids=msg_id)
                 
                 if not msg or msg.empty:
@@ -115,7 +60,7 @@ async def get_msg(userbot, client, sender, edit_id, msg_link, i, file_n):
 
                 await process_file(client, sender, edit, file, msg, file_n)
                 
-            except (ValueError, KeyError, PeerIdInvalid) as e:
+            except Exception as e:
                 await client.edit_message_text(sender, edit_id, f"Error: {str(e)}")
                 return None
                 
